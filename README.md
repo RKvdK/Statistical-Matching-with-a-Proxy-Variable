@@ -35,9 +35,17 @@ The `Data/` folder contains the following objects:
 
 ### Manuscript
 
-The `Manuscript/` folder contains the Quarto source file `Statistical Matching with a Proxy Variable: The Role of Sample Size, Unit Overlap, Selectivity, Proxy Quality and the Validity of the Conditional Independence Assumption.qmd` used to render the thesis manuscript, as well as the corresponding PDF version `Statistical Matching with a Proxy Variable: The Role of Sample Size, Unit Overlap, Selectivity, Proxy Quality and the Validity of the Conditional Independence Assumption.pdf`.
+The `Manuscript/` folder contains the Quarto source file `Thesis.qmd` used to render the thesis manuscript, as well as the corresponding PDF version: `Thesis.pdf`. 
+Additionally, the `Manuscript/` folder contains the `Manuscript/References` folder. This folder contains:
 
-Additionally, the `Manuscript/` folder contains the `Manuscript/References` folder 
+- `references.bib`: Bibliography database to manage the manuscript citations.
+- `apa.csl`: Citation style language file.
+
+Finally, the `Manuscript/` folder contains the `Manuscript/Figures` folder. This folder contains all .png-files that are used in the PDF manuscript:
+
+- `METFIG.png`:
+- `patdeg.png`:
+- `
 
 ### Output
 
