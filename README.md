@@ -24,21 +24,26 @@ The `Code/` folder contains the following scripts, which should be run in the in
 - `12_scenarios.R`: Definition of the simulation scenarios.
 - `13_scenario_results.R`: Calculation and visualization of the scenario-based analysis.
 
+Additionally, this folder contains `SMPV.Rproj`, which is the corresponding Rstudio project file.
+
 ### Data
 
-This folder contains the following objects:
+The `Data/` folder contains the following objects:
 
-MC50.rds: RDS-file containing the full grid simulation results.
-MC50.text: Text file containing all parallized simulation logs.
+- `MC50.rds`: RDS-file containing the full grid simulation results.
+- `MC50.txt`: Text file containing all parallized simulation logs.
 
 ### Manuscript
 
+The `Manuscript/` folder contains the Quarto source file `Statistical Matching with a Proxy Variable: The Role of Sample Size, Unit Overlap, Selectivity, Proxy Quality and the Validity of the Conditional Independence Assumption.qmd` used to render the thesis manuscript, as well as the corresponding PDF version `Statistical Matching with a Proxy Variable: The Role of Sample Size, Unit Overlap, Selectivity, Proxy Quality and the Validity of the Conditional Independence Assumption.pdf`.
+
+Additionally, the `Manuscript/` folder contains the `Manuscript/References` folder 
 
 ### Output
 
 ## Software requirements
 
-This project was developed using R (version 4.4.3), quarto and renv. The latter was used to manage all package dependencies.
+This project was developed using R (version 4.4.3), Quarto and renv. The latter was used to manage all package dependencies.
 
 ## Reproducibility
 
