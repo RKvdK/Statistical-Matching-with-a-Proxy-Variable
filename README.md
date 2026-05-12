@@ -43,11 +43,32 @@ Additionally, the `Manuscript/` folder contains the `Manuscript/References` fold
 
 Finally, the `Manuscript/` folder contains the `Manuscript/Figures` folder. This folder contains all .png-files that are used in the PDF manuscript:
 
-- `METFIG.png`:
-- `patdeg.png`:
-- `
+- `METFIG.png`: Overview of the performed simulation study.
+- `patdeg.png`: `Overview of the implemented selectivity patterns and degrees under MAR (generated in `04_selectivity.R`).
+- `convplot.png`: Convergence plot for the bias-variance estimates (generated in `10_biasvariance_convergence.R`).
+- `jointcell.png`: Evaluation of the homogeneity within the joint distributions (generated in `09_homogeneity_within_joints.R`).
+- `sensmar.png`: Evaluation of the sensitivity of the estimates with respect to the MAR patterns and degrees (generated in `11_fullgrid_visualizations.R`).
+- `sensmnar.png`: Evaluation of the sensitivity of the estimates with respect to the MNAR main and interaction effects scenarios (generated in `11_fullgrid_visualizations.R`).
+- `mardiff.png`: Full-grid driver plot under MAR (generated in `11_fullgrid_visualizations.R`).
+- `marstep.png`: More detailed driver plot regarding overlap and external sample size under MAR (generated in `11_fullgrid_visualizations.R`).
+- `mnardiff.png`: Full-grid driver plot under MNAR (generated in `11_fullgrid_visualizations.R`).
+- `mnarstep.png`: More detailed driver plot regarding overlap and external sample size under MNAR (generated in `11_fullgrid_visualizations.R`).
+- `marscenres.png`: Scenario-based results under MAR (generated in `13_scenario_results.R`).
+- `mnarscenres.png`: Scenario-based results under MNAR (generated in `13_scenario_results.R`).
 
 ### Output
+
+The `Output/` folder contains the following objects:
+
+- `A1_benchmark`: Monte Carlo convergence results for scenario A1 (generated in `10_biasvariance_convergence.R`).
+- `D7_benchmark`: Monte Carlo convergence results for scenario D7 (generated in `10_biasvariance_convergence.R`).
+- `H16_benchmark`: Monte Carlo convergence results for scenario H16 (generated in `10_biasvariance_convergence.R`).
+- `Scenario Calculation Results`: Raw Monte Carlo simulation results for all scenarios (generated in `13_scenario_results.R`).
+- `Final Estimates`: Aggregated scenario-level performance estimates for all three estimators (generated in `13_scenario_results.R`).
+
+### Root files
+
+
 
 ## Software requirements
 
