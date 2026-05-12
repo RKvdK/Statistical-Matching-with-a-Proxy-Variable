@@ -1,0 +1,940 @@
+---
+bibliography: references.bib
+csl: apa.csl
+format:
+  pdf:
+    documentclass: article 
+    papersize: a4
+    geometry:
+      - top = 2.54cm
+      - bottom=2.54cm
+      - left=2.54cm
+      - right=2.54cm
+    toc: true # Include a table of contents
+    toc-depth: 2 # Set the depth of the table of contents
+    number-sections: true # Number sections in the document
+    colorlinks: false
+    fig-cap-location: top
+    tbl-cap-location: top
+    include-in-header:
+      text: |
+        \usepackage{caption}
+          \captionsetup{
+            font = normalsize,
+            labelfont = normalfont,
+            textfont = normalfont}
+        \usepackage{setspace}
+        \onehalfspacing % Set line spacing to 1.5
+        \usepackage{float}
+        \usepackage{etoolbox}
+        \usepackage{changepage}
+        \usepackage{tabularx}
+        \usepackage{array}
+        \newcolumntype{Y}{>{\centering\arraybackslash}X}
+        \setlength{\tabcolsep}{10pt}
+        \pretocmd{\tableofcontents}{\clearpage}{}{} % New page for TOC
+        \apptocmd{\tableofcontents}{\clearpage\pagenumbering{arabic}\setcounter{page}{1}}{}{} % New page after TOC
+    include-before-body:
+      text: |
+        \pagenumbering{gobble}
+        \begin{titlepage}
+        
+        \centering
+        
+        \setstretch{1.2} % Adjust line spacing for the title page
+        
+        % Title and subtitle
+        
+        {\Large \textbf{Statistical Matching with a Proxy Variable}} \\
+        
+        
+        \vspace{0.5cm}
+        
+        {\large \textbf{The Role of Sample Size, Unit Overlap, Selectivity, Proxy Quality
+        and the Validity of the Conditional Independence Assumption.}} \\
+        
+        \vspace{1.5cm}
+        
+        % Author name
+        
+        {\large R.K. van de Kaap} \\
+        \vspace{1.5cm}
+        
+        % Affiliations
+        
+        Utrecht University (UU) in cooperation with Statistics Netherlands (SN) \\
+        
+        \vspace{0.5cm}
+        
+        Faculty of Social and Behavioural Sciences \\
+        
+        \vspace{0.5cm}
+        
+        Research Master in Methodology and Statistics for the Behavioural, Biomedical and Social Sciences \\
+        
+        \vspace{1.5cm}
+        
+        % Supervisors
+        
+        Dr. A. van Delden (SN) \\
+        
+        \vspace{0.5cm}
+        
+        Prof. Dr. T. de Waal (SN) \\
+        
+        \vspace{0.5cm}
+        
+        Dr. S. Scholtus (SN) \\
+        
+        \vspace{1.5cm}
+           
+        Ethics approval number: FETC 25-1983 \\
+           
+        \vspace{0.5cm}
+           
+        Candidate journal for publication: \textit{Journal of Official Statistics} \\
+        
+        \vfill
+        
+        \end{titlepage}
+        
+        \section*{Abstract}
+        
+        Statistical matching is used to combine data sources when key variables are not
+        jointly observed. However, the performance of matching estimators depends strongly
+        on data quality and underlying assumptions, particularly when proxy variables
+        subject to measurement error and selective external samples are involved. This
+        study evaluates the performance of doubly robust estimation for statistical
+        matching and compares it to iterative proportional fitting (IPF) and the CIA proxy
+        estimator. A Monte Carlo simulation study was conducted, combining a large-scale
+        full grid exploration with a focused scenario-based analysis. The simulations vary
+        key data-generating conditions, including proxy quality, violations of the
+        conditional independence assumption (CIA), unit overlap and sample sizes under
+        both missing at random (MAR) and missing not at random (MNAR) mechanisms. The
+        results show that estimator performance is highly context dependent and governed
+        by a trade-off between bias reduction and estimation variability. Proxy quality,
+        unit overlap and selectivity in the external sample emerge as key drivers of
+        performance. Under MAR, the CIA proxy estimator often achieves the best
+        performance, as additional correction mainly introduces variability. Under MNAR,
+        where selection induces bias, the doubly robust estimator tends to perform better
+        by exploiting overlap-based corrections, particularly when proxy quality is high
+        and sufficient data are available. These findings highlight that the effectiveness
+        of statistical matching depends not only on the availability of additional
+        information, but also on whether this information can be used reliably. Careful
+        assessment of proxy quality, overlap, and selection mechanisms is therefore
+        essential when applying statistical matching methods. 
+        
+        \vspace{0.5cm}
+        
+        \noindent\textbf{Keywords:} conditional independence assumption; doubly robust
+        estimation; measurement error; Monte Carlo simulation; proxy variable; selectivity
+
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+library(knitr) # Enable kable function
+library(kableExtra) # Enhanced table formatting
+
+knitr::opts_chunk$set(
+  echo = FALSE, # Hide code in the output
+  warning = FALSE, # Suppress warnings
+  message = FALSE # Suppress messages
+)
+
+kable_full <- function(x, col.names = NULL, align = NULL) {
+  args <- list(
+    x = x,
+    format = "latex",
+    booktabs = TRUE,
+    escape = FALSE,
+    align = align,
+    tabular = "tabularx",
+    width = "\\textwidth"
+  )
+  if (!is.null(col.names)) args$col.names <- col.names
+  do.call(kable, args)
+}
+
+```
+
+\clearpage
+
+# Introduction
+
+## Problem Statement
+
+Both public and private organizations heavily rely on survey data, complemented by administrative and big data sources. However, in the past decades survey response rates have been declining [@luiten2020]. This introduces unit nonresponse, meaning that a sampled unit does not complete any part of the survey [@biemer2010]. Within the total survey error (TSE) framework, this nonresponse potentially introduces bias and increased variance, also referred to as unit nonresponse error [@biemer2010;@groves2010]. At the same time, official statistical institutes, such as Statistics Netherlands, seek to reduce the response burden on citizens and businesses by relying on existing sources wherever possible, and limiting the use of surveys where possible [@cbs2023]. In situations where key variables are not jointly observed across available data sources, combining information from multiple sources may offer an alternative to collecting new survey data. This strategy helps to reduce costs, especially in settings where on-demand statistics and ad hoc outputs are required. To illustrate, consider a study examining the relationship between educational attainment and smoking behavior. In practice, these variables may not be observed simultaneously, making it difficult to estimate their association directly. In such cases, statistical matching provides a framework for combining data sources using common auxiliary variables, thereby addressing unit nonresponse through more efficient use of available data [@waal2015]. Promising results have been reported in survey applications [@donatiello2022].
+
+## Statistical Matching
+
+In statistical matching, a statistic is computed for variables that are observed in two or more separate datasets with no or small unit overlap, where unit overlap refers to the presence of the same units in multiple samples [@dorazio2006]. In the classical statistical matching setting, two samples are considered. Each sample contains a different categorical target variable. Target variable $Y$ is observed in sample $A$, while $Z$ is observed in sample $B$. In both samples, a common auxiliary variable $X$ is observed, whose levels refer to unique configurations of background characteristics. The goal is to estimate the true joint distribution of $Y$ and $Z$. To identify this joint distribution, additional assumptions are required. A key assumption in statistical matching is the conditional independence assumption (CIA). The CIA states that the target variables are statistically independent given their common set of auxiliary variables [@dorazio2006]. Under the CIA, the association between $Y$ and $Z$ is fully explained by $X$, allowing the joint distribution to be estimated based on the observed marginal distributions in the separate samples as shown in @eq-clacia. 
+
+$$
+P(Y,Z \mid X) = P(Y \mid X) P(Z \mid X)
+$$ {#eq-clacia}
+	
+However, in practice, the CIA is often infeasible to test [@dorazio2006]. The auxiliary variables may not fully explain the association between the target variables, for example when there are unobserved confounders. Consequently, violation of the CIA can lead to biased estimates. Statistical matching can be extended by adopting an external sample in which both $Y$ and a proxy variable ($Y^*$) are observed. This proxy is an indirect but related measure of target variable $Y$ containing measurement error, providing additional information about $Y$. @tbl-samples provides an overview of the considered samples and, for each sample, the observed categorical variables. 
+
+```{r}
+#| label: tbl-samples
+#| tbl-cap: "Schematic representation of the three samples, the observed variables and their corresponding number of levels."
+#| tbl-pos: "H"
+#| results: "asis"
+
+tbl1 <- data.frame(
+  Sample = c("$A$", "$B$", "$E$"),
+  `$Y$ (3)` = c("$\\checkmark$", "", "$\\checkmark$"),
+  `$Z$ (3)` = c("", "$\\checkmark$", ""),
+  `$X$ (6)` = c("$\\checkmark$", "$\\checkmark$", ""),
+  `$Y^*$ (3)` = c("", "$\\checkmark$", "$\\checkmark$"),
+  check.names = FALSE
+)
+
+kable_full(tbl1, align = "YYYYY")
+
+```
+
+By including $Y^*$ as an additional auxiliary variable, the conditional independence assumption is expanded to CIA($Y^*$), making it more likely that the remaining association between $Y$ and $Z$ is fully captured by the observed variables, as shown in @eq-extcia. This increases the plausibility of the CIA. 
+
+$$
+P(Y,Z \mid X, Y^*) = P(Y \mid X, Y^*) \, P(Z \mid X, Y^*)
+$$ {#eq-extcia}
+
+To illustrate this extension, consider the example concerning the relationship between educational attainment and smoking. Additional information can be incorporated through an external sample in which educational attainment is observed together with a related proxy, such as parental educational attainment. This external sample provides information on the underlying associations involving the target variable, which can be used to improve the statistical matching. The effectiveness of this extension depends among other things on the selectivity of the external sample [@sojka2025]. 
+
+## Selectivity in the External Sample
+
+Selectivity is a common feature of many data sources [@bruggen2016]. To describe these mechanisms, conditional selection probabilities are used. These probabilities denote the likelihood that unit $i$ is included in the external sample, given the target variables, auxiliary variables and the unobserved factors that may influence this likelihood [@sojka2025]. With respect to selection mechanisms, missing completely at random (MCAR), missing at random (MAR) and missing not at random (MNAR) are considered [@little2019;@rubin1976]. MCAR refers to the situation in which the selection probabilities are independent of the target variables, auxiliary variable or unobserved factors. In practice, this assumption rarely holds. MAR refers to the situation in which the selection probabilities only depend on the auxiliary variable. Finally, MNAR refers to the situation that the selection probabilities additionally depend on either the target variables, the unobserved factors, or both.
+
+## Factors Affecting the Statistical Matching
+
+In this section, data and design characteristics that are theoretically expected to affect the performance of statistical matching are discussed. These characteristics include sample size, the degree of overlap between the samples, the quality of the proxy variable, the validity of the CIA, and the selectivity in the external sample. The size of samples $A$ and $B$ is expected to affect the sampling variability of the estimated distributions, with larger samples leading to lower variance. The degree of unit overlap in samples $A$ and $B$, that is, the proportion of units observed in both samples, is anticipated to affect the performance, as greater overlap allows the joint distribution of $Y$ and $Z$ to be observed more directly, thereby reducing reliance on modeling assumptions such as the CIA. The size of the external sample similarly affects performance by reducing sampling variability in estimates that rely on proxy information. However, selectivity in the external sample may introduce bias. This bias is expected to depend on the underlying selection mechanism, with minimal bias under MCAR, potentially increased bias under MAR, and more substantial bias under MNAR settings. Proxy quality is characterized by the strength of the association between $Y$ and $Y^*$ and by the structure of measurement error probabilities. A stronger association between $Y$ and $Y^*$ allows the proxy to better approximate the distribution of the target variable and is therefore expected to improve estimator performance. The structure of the measurement error further determines how misclassification is distributed across categories. Balanced measurement error probabilities imply evenly distributed misclassification across incorrect categories, whereas unbalanced measurement error probabilities imply uneven misclassification [@delden2016]. Balanced misclassification is expected to reduce bias relative to unbalanced error structures, as the conditional distributions are less distorted and $Y^*$ remains more representative of $Y$. Finally, the validity of the CIA is expected to affect performance, as violations of the CIA imply that residual dependence remains, which may introduce bias in the estimated joint distribution. 
+
+## Present Study
+
+Taken together, this study evaluates how data and design characteristics affect the performance of statistical matching based on a proxy variable. Accordingly, the following research question is addressed: “_To what extent do sample size, unit overlap, the validity of the CIA, and the proxy quality affect the performance of statistical matching based on a proxy variable, and how do these relationships differ across statistical matching estimators?_” First, it is hypothesized that the performance improves as sample sizes and unit overlap increase. Second, lower bias is expected when the association between the target variable and its proxy is strong and when measurement error probabilities are balanced. Third, violations of the CIA are expected to increase bias for estimators that rely on this assumption, whereas estimators that are less dependent on the strict validity of the CIA are expected to be more robust under such violations. Finally, it is hypothesized that performance depends on the selectivity of the external sample with respect to the joint distribution of the target variable and its proxy.
+
+## Thesis Outline
+
+First, the methodological framework is introduced, in which the estimators used in this study are described. Second, the Monte Carlo simulation design is presented. Third, the results are presented. Finally, the findings are discussed and concluded.
+
+\clearpage
+
+# Estimators
+
+## Estimating the Joint Distribution
+
+As a starting point, under the CIA($Y^*$) and assuming that the measurement error mechanism does not depend on $X$, the joint distribution of $Y$ and $Z$ can be expressed as shown in @eq-contar. This theoretical decomposition of the joint distribution serves as the conceptual target for the estimators introduced hereafter, which differ in how the components of the expression in @eq-contar are approximated using the available samples.
+
+$$
+P(Y,Z) =
+\sum_{y^*,x}
+P(Y \mid Y^* = y^*) \,
+P(Z \mid Y^* = y^*, X = x) \,
+P(Y^* = y^*, X = x)
+$$ {#eq-contar}
+
+In practice, this expression cannot be evaluated directly, as its components are not directly observed. This leads to an estimator that combines information from the external sample with information from sample $B$, hereafter referred to as the CIA proxy estimator, $\hat{P}(Y,Z)^{(E \to A,B,B)}$. This estimator makes use of the conditional distribution of $Y$ given $Y^*$ from samples $E$ and $A$, while the conditional distribution of $Z$ given $Y^*$ and the marginal distribution of $Y^*$ are now derived from sample $B$. This is represented in @eq-ciaproxy. This estimator relies on the CIA($Y^*$) assumption, which ensures that the decomposition in @eq-contar is valid and allows its components to be estimated using information from separate samples. This estimator is consistent when the measurement error model is correctly specified.
+
+$$
+\hspace{-2cm} 
+\hat{P}(Y,Z)^{(E\to A,B,B)} =
+\sum_{y^*} \hat{P}(Y\mid Y^*=y^*)^{(E\to A)}
+\sum_x \hat{P}(Z\mid Y^*=y^*,X=x)^{(B)} \hat{P}(Y^*,X)^{(B)}
+$$ {#eq-ciaproxy}
+
+The conditional distribution of $Y$ given $Y^*$ from samples $E$ and $A$ is expressed in @eq-bayes using Bayes’ rule. This expression relies on the measurement error model, represented by the conditional distribution of the proxy variable given the target variable, $P(Y^* \mid Y)$, which describes the misclassification process linking $Y$ and $Y^*$. 
+
+$$
+\hat{P}(Y = i \mid Y^* = y)^{(E \to A)} =
+\frac{
+\hat{P}(Y^* = y \mid Y = i)^{(E)} \, \hat{P}(Y = i)^{(A)}
+}{
+\sum_{y}
+\hat{P}(Y^* = y \mid Y = y)^{(E)} \, \hat{P}(Y = y)^{(A)}
+}
+$$ {#eq-bayes}
+
+However, in practice, the measurement error model may be misspecified, which can result in biased estimates of the joint distribution. This highlights that the performance of this CIA proxy estimator relies on the correct specification of the measurement error model and the validity of the CIA($Y^*$) assumption. To address this limitation, an estimator is constructed that remains unbiased under weaker conditions, while still relying on the CIA($Y^*$) assumption. An additional source of information is provided by the observed unit overlap between samples $A$ and $B$. A direct estimate of the joint distribution can be obtained from this overlap. This follows from the law of total probability and does not rely on additional assumptions, as shown in @eq-diroverlap, where ($AB$) denotes the intersection of samples $A$ and $B$.
+
+$$
+\hat{P}(Y,Z)^{(AB)} = \sum_x \hat{P}(Y,Z \mid X)^{(AB)} \, \hat{P}(X)^{(AB)}
+$$ {#eq-diroverlap}
+	
+Alternatively, the CIA($Y^*$) can be applied to the overlap between samples $A$ and $B$, resulting in the estimator given in @eq-ciaoverlap. In contrast to @eq-diroverlap, this formulation relies on the validity of the CIA($Y^*$). This estimated joint distribution makes use of the conditional distribution of $Y$ given $Y^*$ from samples $E$ and $A$, while the conditional distribution of $Z$ given $Y^*$ and the marginal distribution of $Y^*$ are derived from the observed unit overlap between samples $A$ and $B$, based on shared units. 
+
+$$
+\hspace{-3.4cm}
+\hat{P}(Y,Z)^{(E\to A,AB,AB)} =
+\bigg(
+\sum_{y^*} \hat{P}(Y\mid Y^*=y^*)^{(E\to A)}
+\sum_x \hat{P}(Z\mid Y^*=y^*,X=x)^{(AB)} \hat{P}(Y^*,X)^{(AB)}
+\bigg)
+$$ {#eq-ciaoverlap}
+
+The estimator in @eq-ciaoverlap is structurally similar to the CIA proxy estimator in @eq-ciaproxy, but is applied to the overlap between samples $A$ and $B$ rather than to sample $B$ alone. This allows for a direct comparison with the empirical estimate based on the observed overlap, given in @eq-diroverlap. Both estimators rely on the limited overlap between samples $A$ and $B$ and are therefore subject to substantial variability. As a result, they are typically too unstable to serve as reliable estimators of the joint distribution on their own. However, their difference provides information about discrepancies between model-based and overlap-based estimates. This difference can be interpreted as an estimate of the bias in the CIA proxy estimator, provided that the overlap between samples $A$ and $B$ is representative of the population. Building on these components, the joint distribution is estimated by introducing an estimator that combines the CIA proxy estimator with a correction term based on the overlap between samples $A$ and $B$. This estimator uses the discrepancy between model-based and overlap-based estimates to adjust for potential bias, resulting in the doubly robust estimator, $\hat{P}(Y,Z)^{(\mathrm{DR})}$, as shown in @eq-dre.
+
+$$
+\hat{P}(Y,Z)^{(\mathrm{DR})}
+=
+\left\{
+\hat{P}(Y,Z)^{(AB)}
+-
+\hat{P}(Y,Z)^{(E\to A,AB,AB)}
+\right\}
++
+\hat{P}(Y,Z)^{(E\to A,B,B)}
+$$ {#eq-dre}
+
+This formulation adjusts the CIA proxy estimator using the observed overlap. The term between curly brackets represents the correction term that captures the discrepancy between the joint distribution implied by the CIA($Y^*$) when applied to the overlap and the joint distribution directly observed in the overlap. The final term applies the CIA($Y^*$) to the full sample $B$, thereby providing an estimate based on all available data. The doubly robust estimator involves two assumptions, whereby the estimate is unbiased in expectation when at least one of the assumptions holds [@bang2005]. The first assumption is that the measurement error model, represented by the conditional distribution of $Y^*$ given $Y$, is correctly specified and holds for the entire population. In that case, the correction term has expectation zero, $\mathbb{E}\left[\hat{P}(Y,Z)^{(AB)} - \hat{P}(Y,Z)^{(E\to A,AB,AB)}\right] = 0$, and the doubly robust estimator has the same expected value as the CIA proxy estimator and is therefore unbiased. The second assumption is that the overlap between samples $A$ and $B$ is representative of the population. In that case, the difference between the overlap-based estimators captures the bias in the CIA proxy estimator, resulting in an unbiased estimate. Finally, the doubly robust estimator is unbiased when both assumptions hold simultaneously, as the correction term has expectation zero and the model-based component is correctly specified. However, if the CIA($Y^*$) is violated and both the measurement error model is misspecified and the overlap between samples $A$ and $B$ is not representative of the population, the resulting estimates can be biased [@bang2005].
+
+## Comparative Estimators
+
+Iterative proportional fitting (IPF) is an alternative statistical matching procedure in which an initial joint distribution, referred to as a seed matrix, is iteratively adjusted to match known marginal distributions [@lovelace2015]. The seed matrix consists of the observed overlap in samples $A$ and $B$. If there was no unit overlap, the seed matrix was constructed as the outer product of the marginal distributions of $Y$ and $Z$ obtained from samples $A$ and $B$, respectively. The IPF algorithm was applied such that the resulting joint distribution is consistent with the observed joint distributions of $Y$ and $X$ in sample $A$ and of $Z$ and $X$ in sample $B$, as well as with the marginal distribution of $X$ from sample $B$. IPF has been shown to perform well under various simulation settings [@lovelace2015]. Unlike the doubly robust estimator, IPF does not rely on a proxy variable or assumptions about measurement error. This makes IPF useful for assessing the extent to which exploiting additional structure, such as proxy information and overlap-based corrections, improves estimator performance.	In addition, the CIA proxy estimator is also considered as standalone estimator to assess the contribution of incorporating overlap information. Evaluating its performance provides insight into the added value of combining external sample information with observed overlap in the doubly robust estimator. 
+
+## Performance of the Doubly Robust Estimator
+
+The performance of the doubly robust estimator depends on how accurately its underlying components are estimated. In particular, the CIA proxy estimator component is sensitive to the specification of the measurement error model and the quality of the proxy variable, while the overlap-based correction term depends on the size and representativeness of the unit overlap between samples $A$ and $B$. Larger sample sizes improve estimation accuracy, whereas violations of the CIA may introduce bias in both components. As a result, the performance of the doubly robust estimator depends on the interaction between proxy quality, overlap characteristics, and the validity of the CIA.
+
+\clearpage
+
+# Simulation Study
+
+## Data Generating Mechanisms
+
+To evaluate the research question, a Monte Carlo (MC) simulation study was performed. For each set of simulation conditions, repeated samples were drawn from the population, indexed by $r = 1, \ldots, R$. For each MC draw, the doubly robust, IPF and CIA proxy estimators were applied, and their performance was evaluated based on the resulting estimates. @fig-overview illustrates the main components of the simulation framework.
+
+```{r}
+#| label: fig-overview
+#| fig-cap: "Schematic overview of the simulation design."
+#| fig-pos: "H"
+#| out-width: "55%"
+
+knitr::include_graphics("METFIG.png")
+
+```
+ 
+For each set of simulation conditions, a synthetic population ($N=1000000$)  was generated, from which three samples were subsequently drawn according to the structure of @tbl-samples. The population variables $Y$ and $X$ were generated independently from multinomial distributions with equal category probabilities, implying a uniform joint distribution over ($Y$,$X$) prior to generating $Z$. Moreover, to induce a violation of the CIA, target variable $Z$ was generated conditional on both the proxy variable $Y^*$ and the auxiliary variable $X$. To model the degree of CIA violation, the distribution of $Z$ is constructed as shown in @eq-delta. Here, $\delta \in [0,1]$ serves as a tuning parameter. When $\delta = 0$, the CIA is valid as $Z$ only depends on $X$ and $Y^*$. As $\delta$ increases, the dependence of $Z$ on $Y$ strengthens, thereby inducing violations of the CIA.
+
+$$
+P(Z \mid X, Y, Y^*) = (1 - \delta)\, P(Z \mid X, Y^*) + \delta\, P(Z \mid Y)
+$$ {#eq-delta}
+
+To model proxy quality, a transition matrix was used [@burger2015;@delden2016]. This matrix is defined by the conditional probabilities $\pi_{ij} = P(Y^* = Y_j^* \mid Y = Y_i)$, where $i$ and $j$ denote the categories of $Y$ and $Y^*$, respectively. Accordingly, the proxy variable $Y^*$ was generated conditional on target variable $Y$. The diagonal elements $\pi_{ii}$ represent correct classification probabilities, while the off-diagonal elements represent misclassification probabilities. For example, $\pi_{12}$ denotes the probability that an individual belonging to category $Y_1$ is misclassified into category $Y_2^*$. The measurement error mechanism was assumed to be independent of both $X$ and $Z$. Furthermore, these probabilities were constrained to sum to one conditional on $Y$. The generic structure of the transition matrix is shown in @tbl-tranmat. 	
+
+```{r}
+#| label: tbl-tranmat
+#| tbl-cap: "Schematic representation of the transition matrix."
+#| tbl-pos: "H"
+
+tbl2 <- data.frame(
+  row = c("$Y_1$", "$Y_2$", "$Y_3$"),
+  "$Y_1^*$" = c("$\\pi_{11}$", "$\\pi_{21}$", "$\\pi_{31}$"),
+  "$Y_2^*$" = c("$\\pi_{12}$", "$\\pi_{22}$", "$\\pi_{32}$"),
+  "$Y_3^*$" = c("$\\pi_{13}$", "$\\pi_{23}$", "$\\pi_{33}$"),
+  check.names = FALSE
+)
+
+names(tbl2)[1] <- ""
+
+kable_full(tbl2, align = "lYYY")
+```
+
+In the simulation design, the diagonal elements are parameterized by a common value $p \in [0,1]$, such that $\pi_{ii} = p$, where $p=1$ indicates that there is no measurement error. The remaining probability mass $1-p$ is allocated to the off-diagonal elements. In the symmetric case, this mass is distributed equally across all incorrect categories, $\pi_{ij} = \frac{1 - p}{2},\; i \ne j$. In the asymmetric case, the off-diagonal probabilities are generated as random positive values and rescaled to sum up to $1-p$ within each row, allowing for unequal misclassification patterns across categories.	
+
+## Simulation Conditions	
+
+To systematically evaluate the performance of the estimators under varying data-generating settings, the study was organized into distinct simulation blocks and conditions. With respect to the external sample, two separate simulation blocks were considered. In the first block, selection was assumed to be MAR, with inclusion probabilities depending on $X$, but not on $Y$ or $Z$. To operationalize this mechanism, selection was defined through selection scores assigned to each category of $X$. These scores represent inclusion weights, indicating how likely units in each category of $X$ are to be selected compared to the baseline category, being the category with the lowest selection score [@sojka2025]. The selection scores define the relative likelihood of inclusion and are subsequently normalized to obtain the corresponding inclusion probabilities. Specifically, for a unit $i$ with $X_i=x$, the probability of being included in the external sample is proportional to its normalized selection score and is represented by @eq-marselect. Here, $s(x)$ denotes the selection score associated with category $x$, and $K$ denotes the number of categories of $X$. The selection scores are normalized across all categories of $X$.
+
+$$
+P(S_i = 1 \mid X_i = x) \propto \frac{s(x)}{\sum_{k=1}^{K} s(x_k)}
+$$ {#eq-marselect}
+
+Two aspects of selectivity are distinguished. First, the selectivity pattern determines the relative ordering of the selection scores across categories of $X$, indicating which categories are more or less likely to be selected [@sojka2025]. Second, the selectivity degree refers to the magnitude of the differences between these scores [@sojka2025]. Higher selectivity degrees correspond to larger differences in selection scores. Four selectivity patterns were considered: linear decrease, U-shaped, step function, and extreme increase [@sojka2025], as specified in @sec-appa (@tbl-marpat). In addition, for the linear decrease pattern, three selectivity degrees were implemented, corresponding to  reduced, original and increased levels of selectivity [@sojka2025], also shown in @sec-appa (@tbl-mardeg). All selectivity patterns and degrees are integrated and visualized in @fig-patdag.	
+
+```{r}
+#| label: fig-patdag
+#| fig-cap: "MAR selectivity patterns and degrees."
+#| fig-pos: "H"
+#| out-width: "100%"
+
+knitr::include_graphics("patdeg.png")
+
+```
+ 
+In the second block, selection was assumed to be MNAR, implying that inclusion in the external sample depends on the values of target variables $Y$ and $Z$. To operationalize this mechanism, selection was defined through selection scores assigned to combinations of $Y$ and $Z$. These scores indicate how likely units with a given combination of target variable categories are to be selected. Like in the MAR setting, the selection scores are normalized to obtain inclusion probabilities. Specifically, for a unit $i$ with $Y_i=y$ and $Z_i=z$, the probability of being included in the external sample is proportional to its normalized selection score, as represented by @eq-mnarselect. Here, $s(y,z)$ denotes the selection score associated with the combination of categories of $y$ and $z$. The selection scores are normalized across all combinations of categories of $Y$ and $Z$, where $G$ and $H$ denote the number of categories of $Y$ and $Z$, respectively.
+
+$$
+P(S_i = 1 \mid Y_i = y, Z_i = z) \propto
+\frac{s(y,z)}{\sum_{g=1}^{G} \sum_{h=1}^{H} s(y_g,z_h)}
+$$ {#eq-mnarselect}
+
+Two types of MNAR mechanisms are distinguished. In the main effects scenarios, the selection scores vary systematically with $Y$ and $Z$ separately, such that the relative differences associated with one variable remain constant across levels of the other variable [@sojka2025]. These scenarios are referred to as classic increase, non-monotonic and Y-only [@sojka2025], and shown in @sec-appa (@tbl-mnarmain). In addition, interaction scenarios were implemented in which the selection scores depend on specific combinations of $Y$ and $Z$, implying that the relative differences associated with one variable vary across levels of the other [@sojka2025]. These scenarios are referred to as weak, moderate, strong and extreme, and are also shown in @sec-appa (@tbl-mnarint). Within each simulation block, additional simulation conditions were varied. @tbl-simcon provides an overview of these conditions and their corresponding levels. Altogether, there were 6,318 unique sets of simulation parameters.  
+
+```{r}
+#| label: tbl-simcon
+#| tbl-cap: "An overview of all conditions and their corresponding dimensions."
+#| tbl-pos: "H"
+#| results: "asis"
+
+tbl3 <- data.frame(
+  Condition = c(
+    "$n$",
+    "$\\dfrac{n_E}{n}$",
+    "$\\dfrac{n_{AB}}{n}$",
+    "$p$",
+    "$\\pi_{ij} = \\dfrac{1 - p}{2},\\ i \\neq j$",
+    "$\\delta$"
+  ),
+  `Number of Dimensions` = c(3, 3, 3, 3, 2, 3),
+  Dimensions = c(
+    "$\\{1000,\\ 10000,\\ 100000\\}$",
+    "$\\{0.20,\\ 0.50,\\ 0.80\\}$",
+    "$\\{0,\\ 0.10,\\ 0.30\\}$",
+    "$\\{0.50,\\ 0.70,\\ 0.90\\}$",
+    "$\\{\\text{True},\\ \\text{False}\\}$",
+    "$\\{0,\\ 0.25,\\ 0.75\\}$"
+  ),
+  check.names = FALSE
+)
+
+kable(
+  tbl3,
+  format = "latex",
+  booktabs = TRUE,
+  escape = FALSE,
+  align = "ccc"
+) %>%
+  kable_styling(full_width = FALSE, position = "center") %>%
+  row_spec(1:6, extra_latex_after = "\\addlinespace[5pt]")
+
+```
+
+## Estimator Performance Procedure
+
+The performance evaluation of the doubly robust estimator, IPF and the CIA proxy estimator was conducted in a two-stage process. First, all unique sets of simulation conditions  were evaluated using $R=50$ MC draws. The goal of this full grid simulation was to obtain a broad overview of the estimator performances across the blocks and conditions, while maintaining computational feasibility. Second, based on these results, a subset of 16 scenarios was selected for more detailed evaluation. The selection aimed to retain scenarios that are both practically relevant and sufficiently diverse, with particular emphasis on variation in measurement error structures. To facilitate interpretation, the selected scenarios were grouped into eight simulation contexts, each representing a distinct combination of data-generating features. These contexts capture key differences in overlap between samples, the severity of the measurement error, CIA violations and selection mechanisms, as presented in @tbl-contexts. The detailed scenario specifics of each scenario can be found in @sec-appb.
+
+```{r}
+#| label: tbl-contexts
+#| tbl-cap: "Overview of the scenario contexts and their defining features."
+#| tbl-pos: "H"
+#| results: "asis"
+
+tbl4 <- data.frame(
+  Context = c(
+    "MAR: Linear decrease",
+    "$A$", "$B$", "$C$", "$D$", "$E$", "$F$",
+    "MNAR: Classic increase",
+    "$G$", "$H$"
+  ),
+  Feature = c(
+  "",
+  "Baseline: $p \\in \\{0.70,\\ 0.90\\}$",
+  "Balanced versus unbalanced error structure",
+  "Overlap sample size: $\\dfrac{n_{AB}}{n} \\in \\{0,\\ 0.30\\}$",
+  "Small sample sizes: $p \\in \\{0.70,\\ 0.90\\}$",
+  "CIA violation: $\\delta \\in \\{0.25,\\ 0.75\\}$",
+  "External sample size: $\\dfrac{n_E}{n} \\in \\{0.20,\\ 0.80\\}$",
+  "",
+  "No interaction (baseline): $p \\in \\{0.70,\\ 0.90\\}$",
+  "Weak versus strong $Y-Z$ interaction"
+),
+  check.names = FALSE
+)
+
+kable(
+  tbl4,
+  format = "latex",
+  booktabs = TRUE,
+  escape = FALSE,
+  align = "ll"
+) %>%
+  kable_styling(full_width = TRUE, position = "center") %>%
+  column_spec(1, width = "4cm") %>%   
+  column_spec(2, width = "7cm") %>%
+  row_spec(1:nrow(tbl4), extra_latex_after = "\\addlinespace[4pt]") %>%
+  row_spec(7, extra_latex_after = "\\midrule\\addlinespace[4pt]")
+
+```
+
+To enhance interpretability and limit the dimensionality of the simulation design, only the original degree linear decrease pattern was selected for the MAR settings (@tbl-marpat). Empirical justification for this design choice can be found in @sec-appc. For the MNAR block, the classic increase main effect scenario was retained to increase comparability, as the interaction scenarios were constructed by extending this main effect scenario. Finally, the selected scenarios were simulated with $R=5000$ draws to obtain the estimates for the subset of scenarios. More details on the bias and standard deviation convergence assessment can be found in @sec-appd.
+
+## Estimator Performance Evaluation
+
+The performance of the doubly robust estimator, IPF estimator and the CIA proxy estimator was evaluated in terms of bias, absolute bias, standard deviation and root mean squared error (RMSE) at the joint distribution level. Additional empirical justification for evaluating estimator performance at the level of the joint distribution, rather than at the cell level, is provided in @sec-appe. Let $\hat{\theta}_c^{(r)}$ denote the estimated value for cell $c = 1, \ldots, C$ in MC draw $r = 1, \ldots, R$, and let $\theta_c$ denote the corresponding true value. Furthermore, let $\bar{\hat{\theta}}_c = \frac{1}{R} \sum_{r=1}^{R} \hat{\theta}_c^{(r)}$ denote the mean estimated value for cell $c$ across MC draws. For each cell, the bias, standard deviation, and RMSE [@biemer2010] are defined as shown in @eq-bias, @eq-sd, and @eq-rmse, respectively.
+
+$$
+\mathrm{Bias}_c = \frac{1}{R} \sum_{r=1}^{R} \left( \hat{\theta}_c^{(r)} - \theta_c \right)
+$$ {#eq-bias}
+
+$$
+\mathrm{SD}_c = \sqrt{ \frac{1}{R - 1} \sum_{r=1}^{R} \left( \hat{\theta}_c^{(r)} - \bar{\hat{\theta}}_c \right)^2 }
+$$ {#eq-sd}
+
+$$
+\mathrm{RMSE}_c = \sqrt{ \mathrm{Bias}_c^2 + \mathrm{SD}_c^2 }
+$$ {#eq-rmse}
+
+The absolute bias is given by $|\mathrm{Bias}_c|$. To obtain overall performance measures at the joint distribution level, the cell-specific absolute bias, standard deviation and RMSE are averaged across all cells of the joint distribution, as shown in @eq-perfavg, where $M$ denotes one of the performance measures (absolute bias, standard deviation, or RMSE). 
+
+$$
+M = \frac{1}{C} \sum_{c=1}^{C} M_c
+$$ {#eq-perfavg}
+
+In addition, to analyze the relationship between simulation conditions and performance measures, performance differences were assessed by comparing the RMSE values of the doubly robust estimator to those of the IPF and CIA proxy estimators. Specifically, for a given set of simulation conditions, the performance differences are defined as shown in @eq-rmsediff, where the doubly robust estimator is compared to each alternative estimator $k$.
+
+$$
+\Delta_k = \mathrm{RMSE}_k - \mathrm{RMSE}_{\mathrm{DRE}}
+$$ {#eq-rmsediff}
+
+A difference measure was preferred over a relative measure to avoid instability when RMSE values are small and to obtain a measure centered around zero, allowing for a direct interpretation of performance differences. Positive values of $\Delta_k$ indicate that the doubly robust estimator outperforms the comparator, whereas negative values indicate the opposite.
+
+## Technical Specifications	
+	
+All analyses were conducted in R (version 4.4.3). In addition, several R packages were used. For data wrangling,  tidyverse (version 2.0.0) was used [@tidyverse2019]. For data visualization, ggplot2 (version 4.0.2) was used [@ggplot2]. In addition, patchwork (version 1.3.2) was used [@patchwork2025]. Ethical consent for this study was granted (FETC File Number: 25-1983) by the Ethics Review Board of the Faculty of Social and Behavioural Sciences of Utrecht University. The code and simulation output data used for the analyses are available at https://github.com/RKvdK/Statistical-Matching-with-a-Proxy-Variable.git.
+
+## AI Statement
+
+With respect to this thesis, generative AI (OpenAI's ChatGPT-5.5 Thinking) was used for text editing and English language checking. In addition, generative AI was used as a debugging tool for the R code.
+
+\clearpage
+
+# Results
+
+## MAR Full Grid Simulation
+
+The full grid simulation provides an overview of estimator performance across all combinations of simulation conditions. For each factor in the simulation design, the results are evaluated by examining the distribution of RMSE differences across its levels, while aggregating over all remaining conditions. Under MAR, the performance of the doubly robust estimator relative to the comparison estimators is summarized in @fig-mardiff.
+
+```{r}
+#| label: fig-mardiff
+#| fig-cap: "RMSE differences between the comparison estimators and the doubly robust estimator under MAR (comparison estimator – DRE). Positive values indicate lower RMSE for the doubly robust estimator."
+#| fig-pos: "H"
+#| out-width: "100%"
+
+knitr::include_graphics("mardiff.png")
+
+```
+
+Sample size shows a clear association with the comparison to the CIA proxy estimator, but much less so with IPF. Smaller samples favor the CIA proxy estimator, while differences move toward zero as the sizes of samples $A$ and $B$ increase. In contrast, differences with IPF remain centered close to zero across sample sizes. Because both the external sample size and unit overlap depend on the size of samples $A$ and $B$, these factors were examined in both proportional (@fig-mardiff) and absolute terms, where the absolute values are stratified by the sample size of $A$ and $B$. @fig-marstep shows that the pattern for external sample size is partly structured by the sample size of $A$ and $B$: smaller external samples are associated with more negative differences in the comparison with the CIA proxy estimator, whereas larger external samples yield differences closer to zero, indicating more similar performance. Within sample size strata, however, this relationship is less pronounced and not strictly monotonic. This indicates that the overall pattern cannot be explained solely by within-stratum effects and varies across sample sizes. In contrast, differences with IPF remain relatively small across external sample sizes and show no clear systematic pattern.
+
+```{r}
+#| label: fig-marstep
+#| fig-cap: "RMSE differences for absolute external sample size and absolute unit overlap under MAR, stratified by the size of samples A and B (comparison estimator – DRE). Positive values indicate lower RMSE for the doubly robust estimator."
+#| fig-pos: "H"
+#| out-width: "90%"
+
+knitr::include_graphics("marstep.png")
+
+```
+
+Unit overlap shows a distinct pattern across the two comparisons. In the absence of unit overlap, the doubly robust estimator coincides with the CIA proxy estimator. Once overlap is present, the CIA proxy estimator tends to yield lower RMSE values. In the proportional representation (@fig-mardiff), this relationship appears non-monotonic. However, @fig-marstep shows that this pattern becomes more structured when absolute overlap size is considered: small overlap sizes are associated with more negative differences, whereas larger overlap sizes yield differences closer to zero. Within each stratum, increasing overlap is associated with a gradual reduction in these differences. In contrast, differences with IPF remain generally positive and show no clear relationship with overlap. Additionally, the role of proxy strength varies across the two comparisons. For the comparison with the CIA proxy estimator, RMSE differences remain predominantly negative across all levels, with only a slight shift toward zero as proxy strength increases. In contrast, for the comparison with IPF, a clearer pattern emerges. Here, the RMSE differences move from values close to zero at lower levels of proxy strength to predominantly positive values at higher levels, indicating a relative advantage of the doubly robust estimator as the proxy becomes more informative. The error structure does not appear to be associated with RMSE differences. Symmetric and asymmetric specifications yield very similar patterns across both comparisons. Finally, in the absence of CIA violation, RMSE differences are predominantly negative in the comparison with the CIA proxy estimator, indicating that the latter tends to yield lower RMSE values. As the degree of CIA violation increases, these differences move toward zero, suggesting more similar performance. In contrast, RMSE differences with IPF remain centered close to zero across all levels of violation, indicating that the CIA violation plays a limited role in this comparison.
+
+## MNAR Full Grid Simulation
+
+Under MNAR, the corresponding RMSE differences are summarized in @fig-mnardiff. Compared to the MAR settings, differences between estimators are generally larger and more heterogeneous across settings.
+
+```{r}
+#| label: fig-mnardiff
+#| fig-cap: "RMSE differences between the comparison estimators and the doubly robust estimator under MNAR (comparison estimator – DRE). Positive values indicate lower RMSE for the doubly robust estimator."
+#| fig-pos: "H"
+#| out-width: "100%"
+
+knitr::include_graphics("mnardiff.png")
+
+```
+ 
+For sample size and external sample size, the overall structure is similar to MAR in that variation in RMSE differences is mainly observed in the comparison with the CIA proxy estimator, while differences with IPF remain close to zero (@fig-mnardiff). However, in contrast to MAR, the RMSE differences relative to the CIA proxy estimator are predominantly positive, indicating that the doubly robust estimator tends to yield lower RMSE values under MNAR. This pattern is also observed when external sample size is considered in absolute terms (@fig-mnarstep). Unit overlap again plays a distinct role. As under MAR, the doubly robust estimator coincides with the CIA proxy estimator in the absence of overlap. Once overlap is present, RMSE differences become predominantly positive (@fig-mnardiff). This pattern is also observed when overlap is considered in absolute terms (@fig-mnarstep). Within each sample size stratum, increasing overlap is associated with increasing differences, in contrast to MAR. For the comparison with IPF, the absence of overlap favors IPF, while differences move toward zero when overlap is present, suggesting more similar performance.					
+
+```{r}
+#| label: fig-mnarstep
+#| fig-cap: "RMSE differences for absolute external sample size and absolute unit overlap under MNAR, stratified by the size of samples A and B (comparison estimator – DRE). Positive values indicate lower RMSE for the doubly robust estimator."
+#| fig-pos: "H"
+#| out-width: "90%"
+
+knitr::include_graphics("mnarstep.png")
+
+```
+
+For proxy strength, patterns differ across the two comparisons. In the comparison with the CIA proxy estimator, the RMSE differences remain predominantly positive across all levels, moving toward zero as proxy strength increases. In contrast, for IPF, differences are negative at lower levels and move toward zero as proxy strength increases, indicating that the relative disadvantage of the doubly robust estimator diminishes as the proxy becomes more informative. As under MAR, the error structure shows no clear association with RMSE differences, yielding very similar patterns across both comparisons. CIA violation shows no clear association with RMSE differences under MNAR. In the comparison with the CIA proxy estimator, RMSE differences remain predominantly positive across all levels, while differences with IPF remain centered close to zero.
+ 
+## Scenario Simulations
+
+To complement the full grid simulation, a subset of representative scenarios was selected for more detailed evaluation. These scenario results, included in @sec-appf, enable a more robust comparison of estimator performance across the contexts. Across all contexts, a consistent pattern emerges in which differences in absolute bias and RMSE measures are relatively context-dependent compared to the corresponding standard deviation. In particular, the CIA proxy estimator achieves lower standard deviation, indicating more stable estimates across a wide range of scenarios. However, this stability does not necessarily translate into improved overall performance, as increases in bias can lead to higher RMSE values. A more general pattern emerges when comparing estimator performance across selection mechanism. The performances in all MAR scenarios are visualized in @fig-marscenres. Under MAR, differences in absolute bias across estimators are generally limited.
+
+```{r}
+#| label: fig-marscenres
+#| fig-cap: "Estimator performance across the MAR scenarios. The left panel includes all scenarios, while the right panel excludes the small-sample context D to improve interpretability. The asterisk indicates the estimator with the lowest value within each scenario."
+#| fig-pos: "H"
+#| out-width: "90%"
+
+knitr::include_graphics("marscenres.png")
+```
+ 
+A notable exception is the small sample size context (D), where absolute bias increases substantially for all estimators. Within the MAR settings, the CIA proxy estimator often achieves the lowest RMSE. In contrast, under MNAR, the performance of the CIA proxy estimator deteriorates due to increased bias, and the doubly robust estimator more frequently achieves lower RMSE. While this pattern is not uniform across all scenarios, it highlights a systematic shift in estimator performance depending on the selection mechanism. These MNAR results are visualized in @fig-mnarscenres.		
+
+```{r}
+#| label: fig-mnarscenres
+#| fig-cap: "Estimator performance across the MNAR scenarios. The asterisk indicates the estimator with the lowest value within each scenario."
+#| fig-pos: "H"
+#| out-width: "90%"
+
+knitr::include_graphics("mnarscenres.png")
+```
+ 
+\clearpage
+
+# Discussion
+
+## Interpretation of the Results
+
+The goal of the study was to evaluate how sample size, unit overlap, the validity of the CIA, and the proxy quality affect the performance of statistical matching based on a proxy variable using a doubly robust estimation procedure, and how this compares to both IPF and the CIA proxy estimator. By combining a large-scale full grid simulation with a more focused scenario-based analysis, this study provides a comprehensive overview of how estimator performance varies across a wide range of conditions, as reflected in RMSE differences. A central finding is that estimator performance is highly context dependent, with observed RMSE differences varying substantially across data-generating conditions. Importantly, the relative position of the doubly robust estimator shifts across comparisons. A key theme emerging from the results is a trade-off between additional information and estimation stability. The doubly robust estimator combines a proxy-based component with an overlap-based correction term and therefore benefits from additional information only when this information can be estimated with sufficient precision. Under MAR, the CIA($Y^*$) assumption approximately holds, so the proxy-based component is already close to unbiased, while the overlap-based correction term mainly introduces additional variability. This is strongest in smaller samples and diminishes as sample size increases, leading to more similar performance between the doubly robust and CIA proxy estimators. Under MNAR, the balance shifts. When selection depends on the target variables, the CIA proxy estimator becomes biased, while the doubly robust estimator can partially correct for this through its overlap-based component. As a result, the doubly robust estimator more often achieves lower RMSE values when selection induces bias, and the correction term can be estimated with sufficient precision, particularly in larger samples.								
+
+Unit overlap plays a central role in this mechanism. From a theoretical perspective, overlap provides direct information on the joint distribution of the target variables and reduces reliance on the CIA($Y^*$) assumption. However, the results show that overlap does not automatically improve performance. Under MAR, overlap mainly increases variability through the correction term, whereas under MNAR it becomes a key source of information that enables bias reduction. This shows that overlap can either provide useful information or increase estimation instability. Proxy quality affects performance through the reliability of the measurement error model. A stronger association between the proxy and the target variable improves the accuracy of proxy-based estimation. When both estimators rely on the same proxy information, improvements mainly reduce differences between them. In contrast, relative to IPF, stronger proxies only improve performance when they are sufficiently informative. The limited role of the error structure suggests that the overall strength of the proxy is more important than the specific form of measurement error.		Finally, the contrast between MAR and MNAR highlights the importance of the selection mechanism. Under MAR, estimator performance is largely driven by variability, and the CIA proxy estimator tends to perform well. Under MNAR, bias becomes more prominent, leading to larger and more heterogeneous differences between estimators. In these settings, the doubly robust estimator more often improves upon the CIA proxy estimator, reflecting its ability to combine proxy-based and overlap-based information. These findings emphasize that the plausibility of the CIA($Y^*$) assumption is crucial: when it is violated due to selective sampling, methods that rely solely on this assumption become more vulnerable, while approaches that incorporate additional information become more valuable.
+
+## Comparison of Estimators and Practical Implications 
+
+When comparing the estimators directly, several important patterns emerge. The CIA proxy estimator consistently provides more stable estimates and performs particularly well under MAR. This makes it a suitable choice when the CIA($Y^*$) assumption is plausible and the selection mechanism of the external sample is approximately MAR, particularly when stability is a primary concern. The doubly robust estimator becomes more attractive in settings where these assumptions are likely to be violated, particularly under MNAR. Its performance, however, depends on the availability of sufficient data to support reliable estimation, making it more sensitive to sample size and the extent of overlap. As a result, its use requires careful consideration of the data available. The IPF estimator does not rely on proxy information and makes only limited use of overlap, which contributes to its relatively stable performance across settings. However, this comes at the cost of not exploiting potentially informative structure in the data, which may limit its performance in situations where such information is available. Taken together, these findings highlight that the choice of estimator depends on both the plausibility of the underlying assumptions and the extent to which additional information can be used reliably. In practice, however, the underlying selection mechanism is typically unknown, making it difficult to determine whether MAR or MNAR assumptions are appropriate. In such settings, a pragmatic strategy is to compare results across estimators and assess their sensitivity to the underlying assumptions. Large discrepancies between the CIA proxy and doubly robust estimators may indicate that the CIA($Y^*$) assumption is violated. In addition, substantial differences between IPF and proxy-based estimators may indicate that the proxy or overlap information plays an important role. Finally, similar results across all estimators may further strengthen confidence in the estimates.
+
+## Methodological Considerations 
+
+Several methodological considerations should be taken into account when interpreting these results. The full grid simulation was conducted using $R=50$ MC draws per configuration, which is insufficient for fully stabilizing the estimates as indicated by the convergence diagnostics. Consequently, these results should be interpreted as exploratory and primarily used to identify general patterns. In contrast, the scenario-based analysis provides more reliable estimates, as it is based on $R=5000$ MC draws. At the same time, the selection of scenarios represents a substantial reduction of a much larger set of possible data-generating conditions. Although the selected scenarios were intended to be representative and diverse, alternative configurations may exhibit different performance patterns. Moreover, the results are obtained under specific sample size conditions, and it is not guaranteed that the same patterns will hold for substantially larger samples where asymptotic properties may become more dominant. Another important consideration relates to potential model misspecification. The performance of both the doubly robust and the CIA proxy estimators depends on correctly specified components, including the measurement error model and the validity of the CIA($Y^*$) assumption. Finally, the simulation framework is based on the assumed functional forms and distributional structures. While these were chosen to reflect plausible data-generating processes, different specifications may lead to different performance patterns. This suggests that caution is warranted when extrapolating these results to settings with substantially different data structures.
+
+## Future Research
+
+Several directions for future research emerge from this study. It would be valuable to investigate alternative forms of measurement error, including more complex or asymmetric misclassification structures, to assess whether the observed patterns persist. Additionally, alternative formulations of the CIA and selection mechanisms could be examined to better reflect practical data complexities. This study focuses exclusively on categorical variables. Investigating doubly robust estimation in continuous or mixed data settings would therefore be a relevant direction for future research. Furthermore, the current simulation design assumes that samples $A$ and $B$ are drawn with equal inclusion probabilities, whereas in practice survey data are often collected using more complex sampling designs. Extending the approach to account for sampling weights and more general survey designs would further enhance its applicability. Finally, future research could explore adaptive versions of the doubly robust estimator in which the overlap-based correction term is weighted according to its estimated reliability. Such an approach could reduce the additional variability introduced by the correction term under MAR, while retaining its ability to reduce bias under MNAR.
+
+## Conclusion
+
+In conclusion, this study highlights that the performance of statistical matching estimators is inherently dependent on the underlying data-generating conditions, particularly in the presence of measurement error, limited unit overlap and CIA violations. While the CIA proxy estimator generally performs well under MAR, the doubly robust estimator tends to perform better across MNAR settings, especially when supported by high-quality proxy variables and sufficient data to estimate the correction term reliably. From a broader perspective, these findings highlight the challenges of combining data sources as an alternative to traditional survey data collection in the presence of unit nonresponse. While data integration offers clear advantages in terms of efficiency and reduced response burden, it also introduces additional complexities related to measurement error and selection mechanisms that must be carefully addressed. There is no one-size-fits-all solution; rather, the success of a statistical matching strategy depends on the interplay between data quality, model assumptions, and the structure of the available data. As such, the development and application of robust estimation strategies remain essential for producing reliable statistics in an increasingly data-demanding but less responsive society.
+
+\clearpage
+
+# References
+
+::: {#refs} 
+:::
+
+\clearpage
+
+# Appendix A: Selectivity Mechanisms {#sec-appa}
+
+This appendix reports the selection scores underlying the MAR patterns, MAR selectivity degrees, and MNAR main effects and interaction scenarios in the simulation design.
+
+```{r}
+#| label: tbl-marpat
+#| tbl-cap: "Selection scores across MAR patterns as functions of the auxiliary variable $X$."
+#| tbl-pos: "H"
+#| results: "asis"
+
+tblA1 <- data.frame(
+  Scenario = c("Linear decrease", "U-shaped", "Step function", "Extreme increase"),
+  X1 = c(6, 8, 4, 1),
+  X2 = c(5, 2, 4, 2),
+  X3 = c(4, 1, 4, 3),
+  X4 = c(3, 1, 1, 5),
+  X5 = c(2, 2, 1, 10),
+  X6 = c(1, 8, 1, 40)
+)
+
+kable_full(
+  tblA1,
+  col.names = c("Scenario", "$X1$", "$X2$", "$X3$", "$X4$", "$X5$", "$X6$"),
+  align = "lXXXXXX"
+)
+
+```
+
+```{r}
+#| label: tbl-mardeg
+#| tbl-cap: "Selection scores for the selectivity degrees of the linear decrease MAR pattern."
+#| tbl-pos: "H"
+#| results: "asis"
+
+tblA2 <- data.frame(
+  Scenario = c("Reduced", "Increased"),
+  X1 = c(3, 12),
+  X2 = c(2.6, 9.8),
+  X3 = c(2.2, 7.6),
+  X4 = c(1.8, 5.4),
+  X5 = c(1.4, 3.2),
+  X6 = c(1, 1)
+)
+
+kable_full(
+  tblA2,
+  col.names = c("", "$X1$", "$X2$", "$X3$", "$X4$", "$X5$", "$X6$"),
+  align = "lXXXXXX"
+)
+
+```
+
+```{r}
+#| label: tbl-mnarmain
+#| tbl-cap: "Selection scores for the MNAR main effects scenarios, where selection depends independently on the target variables $Y$ and $Z$."
+#| tbl-pos: "H"
+#| results: "asis"
+
+tblA3 <- data.frame(
+  Scenario = c(
+    "Classic increase", "", "$Y1$", "$Y2$", "$Y3$",
+    "Non-monotonic", "", "$Y1$", "$Y2$", "$Y3$",
+    "$Y$-only", "", "$Y1$", "$Y2$", "$Y3$"
+  ),
+  Z1 = c("", "", 1, 2, 3, "", "", 6, 15, 3, "", "", 4, 1, 7),
+  Z2 = c("", "", 2, 4, 6, "", "", 2, 5, 1, "", "", 4, 1, 7),
+  Z3 = c("", "", 4, 8, 12, "", "", 12, 30, 6, "", "", 4, 1, 7),
+  check.names = FALSE
+)
+
+kable_full(
+  tblA3,
+  col.names = c("Scenario", "$Z1$", "$Z2$", "$Z3$"),
+  align = "lYYY"
+) %>%
+  row_spec(5, extra_latex_after = "\\midrule") %>%
+  row_spec(10, extra_latex_after = "\\midrule")
+
+```
+
+```{r}
+#| label: tbl-mnarint
+#| tbl-cap: "Selection scores for the MNAR interaction scenarios based on the classic increase scenario, where selection depends on the specific combinations of $Y$ and $Z$."
+#| tbl-pos: "H"
+#| results: "asis"
+
+tblA4 <- data.frame(
+  Scenario = c(
+    "Weak", "", "$Y1$", "$Y2$", "$Y3$",
+    "Moderate", "", "$Y1$", "$Y2$", "$Y3$",
+    "Strong", "", "$Y1$", "$Y2$", "$Y3$",
+    "Extreme", "", "$Y1$", "$Y2$", "$Y3$"
+  ),
+  Z1 = c("", "", 1, 1.7, 2.5, "", "", 1, 1, 1.5, "", "", 1.9, 1, 1.3, "", "", 10, 1, 1),
+  Z2 = c("", "", 1.7, 4.3, 5, "", "", 1, 5, 3, "", "", 1, 8.8, 3, "", "", 1, 10, 1),
+  Z3 = c("", "", 3.3, 6.7, 11, "", "", 2, 4, 10.8, "", "", 1.7, 4, 18.8, "", "", 1, 1, 10),
+  check.names = FALSE
+)
+
+kable_full(
+  tblA4,
+  col.names = c("Scenario", "$Z1$", "$Z2$", "$Z3$"),
+  align = "lYYY"
+) %>%
+  row_spec(5, extra_latex_after = "\\midrule") %>%
+  row_spec(10, extra_latex_after = "\\midrule") %>%
+  row_spec(15, extra_latex_after = "\\midrule")
+```
+
+\clearpage
+
+# Appendix B: Parametrical specification of all scenarios {#sec-appb}
+
+```{r}
+#| label: tbl-scenpar
+#| tbl-cap: "The selected scenarios and their corresponding parameter settings. Each scenario is assigned to one of the eight simulation contexts."
+#| tbl-pos: "H"
+#| results: "asis"
+
+tblB1 <- data.frame(
+  Scenario = c("A1","A2","B3","B4","C5","C6","D7","D8",
+               "E9","E10","F11","F12","G13","G14","H15","H16"),
+  n = c("10\\,000","10\\,000","10\\,000","10\\,000",
+        "10\\,000","10\\,000","1\\,000","1\\,000",
+        "10\\,000","10\\,000","10\\,000","10\\,000",
+        "10\\,000","10\\,000","10\\,000","10\\,000"),
+  `n_E/n` = c(0.50,0.50,0.50,0.50,0.50,0.50,0.20,0.20,
+              0.50,0.50,0.20,0.80,0.50,0.50,0.50,0.50),
+  `n_AB/n` = c(0.10,0.10,0.10,0.10,0.00,0.30,0.10,0.10,
+               0.10,0.10,0.10,0.10,0.10,0.10,0.10,0.10),
+  p = c(0.70,0.90,0.70,0.90,0.90,0.90,0.70,0.90,
+        0.70,0.90,0.90,0.90,0.70,0.90,0.90,0.90),
+  `w_ij=(1-p)/2` = c("TRUE","TRUE","FALSE","FALSE",
+                     "TRUE","TRUE","TRUE","TRUE",
+                     "TRUE","TRUE","TRUE","TRUE",
+                     "TRUE","TRUE","TRUE","TRUE"),
+  delta = c(0.25,0.25,0.25,0.25,0.25,0.25,0.25,0.25,
+            0.75,0.75,0.25,0.25,0.25,0.25,0.25,0.25),
+  Interaction = c(rep("NA",12),
+                  "No interaction","No interaction",
+                  "Weak interaction","Strong interaction"),
+  check.names = FALSE
+)
+
+kable(
+  tblB1,
+  format = "latex",
+  booktabs = TRUE,
+  escape = FALSE,
+  col.names = c(
+    "Scenario", "$n$", "$\\dfrac{n_E}{n}$", "$\\dfrac{n_{AB}}{n}$",
+    "$p$", "$\\pi_{ij} = \\dfrac{1 - p}{2}$", "$\\delta$", "Interaction"
+  ),
+  align = "lccccccc"
+) %>%
+  kable_styling(full_width = FALSE, position = "center")
+
+```
+
+\clearpage
+
+# Appendix C: Sensitivity to Selection Mechanisms {#sec-appc}
+
+Based on the full grid simulation, as shown in @fig-sensmar, the distributions of the performance measures across MAR settings are highly similar across the selectivity patterns. Each distribution is based on the mean performance measures computed per configuration, averaged over the $R=50$ MC draws, and aggregated over all configurations in the full grid. This indicates that the results are largely insensitive to the specific pattern and therefore support the use of only the original linear decrease pattern in the main analysis.
+
+```{r}
+#| label: fig-sensmar
+#| fig-cap: "Configuration-level mean absolute bias and mean standard deviation across MAR selection patterns."
+#| fig-pos: "H"
+#| fig-align: "center"
+#| out-width: "100%"
+
+knitr::include_graphics("sensmar.png")
+
+```
+ 
+In contrast, again based on the full grid simulation and as shown in @fig-sensmnar, performance varies across the MNAR effects scenarios. As in @fig-sensmar, the distributions are based on configuration-level averages aggregated across all conditions. Therefore, the baseline, weak and strong interaction settings were retained in the scenario-based analysis.
+
+```{r}
+#| label: fig-sensmnar
+#| fig-cap: "Configuration-level mean absolute bias and mean standard deviation across MNAR selection patterns."
+#| fig-pos: "H"
+#| fig-align: "center"
+#| out-width: "100%"
+
+knitr::include_graphics("sensmnar.png")
+
+```
+
+\clearpage
+ 
+# Appendix D: Bias and Standard Deviation Convergence {#sec-appd}
+
+In @fig-conv, the running bias and standard deviation are shown as functions of the number of MC draws. Scenario A1 represents the baseline setting under MAR, while D7 reflects a small-sample setting expected to affect both bias and variability. Scenario H16 is included to assess the impact of strong interaction under MNAR. Across all scenarios, both measures stabilize rapidly, with convergence achieved after approximately $R=500$ MC draws. Given the availability of sufficient computational resources, a total of $R=5000$ MC draws was used to ensure robustness of the results.
+
+```{r}
+#| label: fig-conv
+#| fig-cap: "Performance measures as a function of the number of MC draws for the considered scenarios (A1, D7 and H16)."
+#| fig-pos: "H"
+#| fig-align: "center"
+#| out-width: "85%"
+
+knitr::include_graphics("convplot.png")
+
+```
+
+\clearpage
+
+# Appendix E: Cell-Level Consistency of Performance Measures {#sec-appe}
+	
+The relationship between the mean performance across cells and the corresponding standard deviation across cells is evaluated for both absolute bias and standard deviation, under MAR and MNAR, as shown in @fig-jointcell. Higher mean values are consistently associated with higher variation across cells, particularly for standard deviation. This indicates that performance is largely homogeneous across cells, implying that aggregated measures at the level of the joint distribution provide a representative summary of estimator performance. 	For absolute bias, some additional variation across cells is observed for the IPF estimator, indicating that bias is distributed less evenly across cells compared to the doubly robust and CIA proxy estimators. This reflects the fact that IPF enforces marginal constraints without explicitly modelling the joint distribution. Nevertheless, the overall relationship remains sufficiently stable.
+
+```{r}
+#| label: fig-jointcell
+#| fig-cap: "Relationship between the mean and standard deviation of cell-level performance measures across cells, by estimator and selection mechanism."
+#| fig-pos: "H"
+#| fig-align: "center"
+#| out-width: "100%"
+
+knitr::include_graphics("jointcell.png")
+
+```
+
+\clearpage
+ 
+# Appendix F: Numerical Performance of the Estimators {#sec-appf}
+
+```{r}
+#| label: tbl-biasperf
+#| tbl-cap: "Performance of the estimators in terms of absolute bias."
+#| tbl-pos: "H"
+#| results: "asis"
+
+tblF1 <- data.frame(
+  Scenario = c("A1","A2","B3","B4","C5","C6","D7","D8",
+               "E9","E10","F11","F12","G13","G14","H15","H16"),
+  `Doubly Robust` = c(0.0030,0.0033,0.0091,0.0046,0.0025,0.0044,0.0246,0.0253,
+                      0.0045,0.0057,0.0037,0.0051,0.0055,0.0043,0.0015,0.0052),
+  IPF = c(0.0028,0.0075,0.0057,0.0066,0.0132,0.0060,0.0255,0.0289,
+          0.0047,0.0052,0.0034,0.0040,0.0044,0.0067,0.0057,0.0050),
+  `CIA proxy` = c(0.0038,0.0022,0.0031,0.0035,0.0025,0.0027,0.0118,0.0128,
+                  0.0083,0.0038,0.0029,0.0026,0.0300,0.0143,0.0132,0.0207),
+  check.names = FALSE
+)
+
+kable(
+  tblF1,
+  format = "latex",
+  booktabs = TRUE,
+  align = "lccc",
+  escape = FALSE
+) %>%
+  kable_styling(full_width = FALSE, position = "center") %>%
+  row_spec(c(2, 4, 6, 8, 10, 12, 14),
+           extra_latex_after = "\\addlinespace[2pt]")
+
+```
+
+```{r}
+#| label: tbl-sdperf
+#| tbl-cap: "Performance of the estimators in terms of standard deviation."
+#| tbl-pos: "H"
+#| results: "asis"
+
+tblF2 <- data.frame(
+  Scenario = c("A1","A2","B3","B4","C5","C6","D7","D8",
+               "E9","E10","F11","F12","G13","G14","H15","H16"),
+  `Doubly Robust` = c(0.0077,0.0055,0.0075,0.0056,0.0030,0.0039,0.0256,0.0198,
+                      0.0077,0.0055,0.0055,0.0055,0.0080,0.0057,0.0054,0.0055),
+  IPF = c(0.0075,0.0074,0.0075,0.0074,0.0022,0.0046,0.0301,0.0309,
+          0.0077,0.0074,0.0075,0.0076,0.0075,0.0075,0.0075,0.0076),
+  `CIA proxy` = c(0.0028,0.0030,0.0029,0.0030,0.0030,0.0030,0.0115,0.0108,
+                  0.0029,0.0030,0.0033,0.0029,0.0029,0.0031,0.0031,0.0032),
+  check.names = FALSE
+)
+
+kable(
+  tblF2,
+  format = "latex",
+  booktabs = TRUE,
+  align = "lccc",
+  escape = FALSE
+) %>%
+  kable_styling(full_width = FALSE, position = "center") %>%
+  row_spec(c(2, 4, 6, 8, 10, 12, 14),
+           extra_latex_after = "\\addlinespace[2pt]")
+
+```
+
+```{r}
+#| label: tbl-rmseperf
+#| tbl-cap: "Performance of the estimators in terms of RMSE."
+#| tbl-pos: "H"
+#| results: "asis"
+
+tblF3 <- data.frame(
+  Scenario = c("A1","A2","B3","B4","C5","C6","D7","D8",
+               "E9","E10","F11","F12","G13","G14","H15","H16"),
+  `Doubly Robust` = c(0.0085,0.0071,0.0128,0.0078,0.0045,0.0067,0.0378,0.0357,
+                      0.0097,0.0088,0.0069,0.0083,0.0105,0.0075,0.0057,0.0082),
+  IPF = c(0.0082,0.0114,0.0107,0.0105,0.0146,0.0086,0.0421,0.0482,
+          0.0093,0.0095,0.0086,0.0092,0.0093,0.0103,0.0100,0.0099),
+  `CIA proxy` = c(0.0052,0.0041,0.0048,0.0051,0.0045,0.0046,0.0187,0.0206,
+                  0.0098,0.0053,0.0050,0.0042,0.0352,0.0174,0.0161,0.0237),
+  check.names = FALSE
+)
+
+kable(
+  tblF3,
+  format = "latex",
+  booktabs = TRUE,
+  align = "lccc",
+  escape = FALSE
+) %>%
+  kable_styling(full_width = FALSE, position = "center") %>%
+  row_spec(c(2, 4, 6, 8, 10, 12, 14),
+           extra_latex_after = "\\addlinespace[2pt]")
+
+```
