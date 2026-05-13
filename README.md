@@ -90,6 +90,6 @@ This project is fully based on simulated data. No empirical or personally identi
 
 ## Contact
 
-Author: Robert van der Kaap
+Author: Robert van der Kaap (responsible for this archive)
 Research Master's programme: Methodology and Statistics for the Biomedical, Behavioural and Social Sciences
 Utrecht University
