@@ -4,6 +4,40 @@
 # Extend cell_data with cell-level summaries for standard deviation
 # ==============================================================================
 
+data <- MC50 %>%
+  
+  select(-ID, -N) %>% 
+  
+  mutate( # Calculate cell-level summary statistics for bias, variance, standard deviation, and RMSE
+    
+    # Doubly robust estimator
+    
+    DRE_biasmean = map_dbl(DRE, ~ mean(.x$absbias_cell)),
+    DRE_varmean  = map_dbl(DRE, ~ mean(.x$var_cell)),
+    DRE_sdmean   = map_dbl(DRE, ~ mean(sqrt(.x$var_cell))),
+    DRE_rmsemean = map_dbl(DRE, ~ mean(sqrt(.x$bias_cell_DRE^2 + .x$var_cell_DRE))),
+    
+    # Iterative proportional fitting
+    
+    IPF_biasmean = map_dbl(IPF, ~ mean(.x$absbias_cell)),
+    IPF_varmean  = map_dbl(IPF, ~ mean(.x$var_cell)),
+    IPF_sdmean   = map_dbl(IPF, ~ mean(sqrt(.x$var_cell))),
+    IPF_rmsemean = map_dbl(IPF, ~ mean(sqrt(.x$bias_cell_IPF^2 + .x$var_cell_IPF))),
+    
+    # CIA proxy estimator
+    
+    PROXY_biasmean = map_dbl(PROXY, ~ mean(.x$absbias_cell)),
+    PROXY_varmean  = map_dbl(PROXY, ~ mean(.x$var_cell)),
+    PROXY_sdmean   = map_dbl(PROXY, ~ mean(sqrt(.x$var_cell))),
+    PROXY_rmsemean = map_dbl(PROXY, ~ mean(sqrt(.x$bias_cell_PROXY^2 + .x$var_cell_PROXY))),
+    
+    # RMSE difference measures
+    
+    DIF_IPF_mean = IPF_rmsemean - DRE_rmsemean,
+    DIF_PROXY_mean = PROXY_rmsemean - DRE_rmsemean 
+    
+  )
+
 cell_data <- data %>%
   mutate(
     
