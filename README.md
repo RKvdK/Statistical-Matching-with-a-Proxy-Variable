@@ -6,6 +6,16 @@ This repository contains the research archive accompanying the MSc thesis "Stati
 
 ## Repository structure
 
+### Root files
+
+The root folder contains the following files on the project level:
+
+- `README.md`: Overview of the research archive and reproduction instructions.
+- `LICENSE`: License file for this research repository.
+- `.gitignore`: Specification of files and folders that should not be tracked by Git.
+- `renv.lock`: Lockfile containing the exact R package versios used in this project.
+- `renv/`: Folder containing the files required to activate the project-sepcific `renv` environment.
+
 ### Code
 
 The `Code/` folder contains the following scripts, which should be run in the indicated numerical order:
@@ -66,17 +76,13 @@ The `Output/` folder contains the following objects:
 - `Scenario Calculation Results`: Raw Monte Carlo simulation results for all scenarios (generated in `13_scenario_results.R`).
 - `Final Estimates`: Aggregated scenario-level performance estimates for all three estimators (generated in `13_scenario_results.R`).
 
-### Root files
-
-
-
 ## Software requirements
 
 This project was developed using R (version 4.4.3), Quarto and renv. The latter was used to manage all package dependencies.
 
 ## Reproducibility
 
-
+To reproduce the results, download or clone this repositore and open `Code/sMPV.Rproj` in Rstudio. First, restore the project-specific package environment by running `renv::restore()` in the R console. Then run the scripts in the `Code/` folder in numerical order, starting from `01_packages.R` and ending with `13_scenario_results.R`. The main full-grid simulation results are stored in `Data/MC50.rds`. Additional simulation outputs required for the manuscript figures are stored in the `Output/` folder. Finally, render the thesus manuscript by opening `manuscript/Thesis.qmd in Quarto or Rstudio and selecting `Render`. 
 
 ## Data
 
