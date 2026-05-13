@@ -82,7 +82,7 @@ This project was developed using R (version 4.4.3), Quarto and renv. The latter 
 
 ## Reproducibility
 
-To reproduce the results, download or clone this repository and open `Code/SMPV.Rproj` in RStudio. First, restore the project-specific package environment by running `renv::restore()` in the R console. Then run the scripts in the `Code/` folder in numerical order, starting from `01_packages.R` and ending with `13_scenario_results.R`. The main full-grid simulation results are stored in `Data/MC50.rds`. Additional simulation outputs required for the manuscript figures are stored in the `Output/` folder. Finally, render the thesis manuscript by opening `mMnuscript/Thesis.qmd in Quarto or RStudio and selecting `Render`. 
+To reproduce the results, download or clone this repository and open `Code/SMPV.Rproj` in RStudio. First, restore the project-specific package environment by running `renv::restore()` in the R console. Then run the scripts in the `Code/` folder in numerical order, starting from `01_packages.R` and ending with `13_scenario_results.R`. The main full-grid simulation results are stored in `Data/MC50.rds`. Additional simulation outputs required for the manuscript figures are stored in the `Output/` folder. Finally, render the thesis manuscript by opening `mMnuscript/Thesis.qmd` in Quarto or RStudio and selecting `Render`. 
 
 ## Data, ethics and privacy
 
