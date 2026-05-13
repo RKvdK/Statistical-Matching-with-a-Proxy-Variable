@@ -2,7 +2,7 @@
 
 ## Project description
 
-This repository contains the research archive accompanying the MSc thesis "Statistical Matching with a Proxy Variable: The Role of Sample Size, Unit Overlap, Selectivity, Proxy Quality and the Validity of the Conditional Independence Assumption." for the Research Master's programme Methodology and Statistics for the Biomedical, Behavioural and Social Sciences. This project examines statistical matching using doubly robust estimation methods and simulation-based analyses.
+This repository contains the research archive accompanying the MSc thesis "Statistical Matching with a Proxy Variable: The Role of Sample Size, Unit Overlap, Selectivity, Proxy Quality and the Validity of the Conditional Independence Assumption." for the Research Master's programme Methodology and Statistics for the Biomedical, Behavioural and Social Sciences. This project examines statistical matching using doubly robust estimation methods and simulation-based analyses. This archive is intended to facilitate transparency and reproducibility of the simulation study and thesis results.
 
 ## Repository structure
 
