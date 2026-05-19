@@ -57,7 +57,7 @@ format:
         
         % Author name
         
-        {\large R.K. van de Kaap} \\
+        {\large R.K. van der Kaap} \\
         \vspace{1.5cm}
         
         % Affiliations
